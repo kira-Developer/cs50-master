@@ -1,50 +1,69 @@
+#include <cs50.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
-#include <cs50.h>
+#include <math.h>
+#include <stdlib.h>
 
-// The following constants were extracted from the ascii table
-// There are two series of letters, the uppercase which starts 
-// at index 65 in decimal notation and and the lowercase which
-// starts at index 97 in decimal notation. There are 26 letters
-// in each.
-// http://www.asciitable.com/
-
-#define UPPERCASE_LETTERS_START 65
-#define LOWERCASE_LETTERS_START 97
-#define LETTERS_COUNT 26
-
-int main(int argc, string args[])
+// This program hides a message using caesar's cypher
+// It takes a positive integer, that we call key, as argument and moves the letters +key positions in the alphabet
+int main(int argc, string argv[])
 {
-    if (argc != 2)
+    int key = 0;
+    // convertes the argument of the function into an int if it exists
+    if (argc == 2)
     {
-        printf("Usage: ./caesar k");
+        key = atoi(argv[1]);
+    }
+
+    // Takes the module of the key if it's bigger than the alphabet's length
+    if (key >= 26)
+    {
+        key %= 26;
+    }
+
+    // validates user input, it must exist and be a positive integer, otherwise prints a message and return one
+    if (argc != 2 || key <= 0)
+    {
+        printf("Usage: ./caesar key\n");
         return 1;
     }
 
-    int k = atoi(args[1]) % LETTERS_COUNT; // if k is > 26, store the division remainder instead
-    string plaintext = get_string("plaintext: ");
+    // gets message to encrypt from user
+    string text = get_string("plaintext: ");
 
-    printf("ciphertext: ");
 
-    for (int i = 0; i < strlen(plaintext); i++)
+    if (argc == 2)
     {
-        if (!isalpha(plaintext[i]))
+        // loop works for every letter in text
+        for (int i = 0, n = strlen(text); i < n; i++)
         {
-            printf("%c", plaintext[i]);
-            continue;
+            // Capital letters
+            if (text[i] >= 65 && text[i] <= 90)
+            {
+                // wraps around if the key is too big
+                if (text[i] + key > 90)
+                {
+                    text[i] -= 26;
+                }
+                // moves the letter +key values in the aplphabet
+                text[i] += key;
+            }
+            // lower case letters
+            else if (text[i] >= 97 && text[i] <= 121)
+            {
+                // wraps around if the key is too big
+                if (text[i] + key > 121)
+                {
+                    text[i] -= 26;
+                }
+                // moves the letter +key values in the aplphabet
+                text[i] += key;
+            }
         }
-
-        // Uppercase letter's index has a different offset than the lowercase counterpart in ascii table
-        int ascii_offset = isupper(plaintext[i]) ? UPPERCASE_LETTERS_START : LOWERCASE_LETTERS_START;
-
-        int pi = plaintext[i] - ascii_offset;
-        int ci = (pi + k) % LETTERS_COUNT;
-
-        printf("%c", ci + ascii_offset);
     }
 
-    printf("\n");
+    // prints out encrypted message
+    printf("ciphertext: %s\n", text);
     return 0;
 }

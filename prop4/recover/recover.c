@@ -1,78 +1,67 @@
 #include <stdio.h>
-#include <stdint.h>
-#include <stdbool.h>
-
-#define BLOCK_SIZE 512
-
-typedef uint8_t BYTE;
+#include <stdlib.h>
 
 int main(int argc, char *argv[])
 {
-    // ensure proper usage
+    // check if the namefile was specified
     if (argc != 2)
     {
-        fprintf(stderr, "Usage: recover infile\n");
+        fprintf(stderr, "Usage: ./recover image\n");
         return 1;
     }
 
-    // remember filenames
-    char *infile = argv[1];
-
-    // open input file
-    FILE *inptr = fopen(infile, "r");
-    if (inptr == NULL)
+    // check if memory card is successfully opened
+    FILE *file = fopen(argv[1], "r");
+    if (file == NULL)
     {
-        fprintf(stderr, "Could not open %s.\n", infile);
-        return 2;
+        fprintf(stderr, "Could not open file %s.\n", argv[1]);
+        return 1;
     }
 
-    BYTE buffer[512];
-    int imageCount = 0;
+    //create vars that we gonna use and allocate memory for them
+    FILE *img;
+    char filename[7];
+    unsigned char *bf = malloc(512);
+    int counter = 0;
 
-    char filename[8];
-    FILE *outptr = NULL;
-
-    while (true)
+    while (fread(bf, 512, 1, file))
     {
-        // read a block of the memory card image
-        size_t bytesRead = fread(buffer, sizeof(BYTE), BLOCK_SIZE, inptr);
-
-        // break out of the loop when we reach the end of the card image
-        if (bytesRead == 0 && feof(inptr))
+        // new jpg file found
+        if (bf[0] == 0xff && bf[1] == 0xd8 && bf[2] == 0xff && (bf[3] & 0xf0) == 0xe0)
         {
-            break;
+            // close previous jpg file if it exists
+            if (counter > 0)
+            {
+                fclose(img);
+            }
+
+            // create filename
+            sprintf(filename, "%03d.jpg", counter);
+            // open new image file
+            img = fopen(filename, "w");
+
+            // check if jpg file is successfully created
+            if (img == NULL)
+            {
+                fclose(file);
+                free(bf);
+                fprintf(stderr, "Could not create output JPG %s", filename);
+                return 3;
+            }
+
+            counter++;
         }
 
-        // check if we found a JPEG
-        bool containsJpegHeader = buffer[0] == 0xff && buffer[1] == 0xd8 && buffer[2] == 0xff && (buffer[3] & 0xf0) == 0xe0;
-
-        // if we found a yet another JPEG, we must close the previous file
-        if (containsJpegHeader && outptr != NULL)
+        //if any jpg file exists writes on the file currently opened
+        if (counter > 0)
         {
-            fclose(outptr);
-            imageCount++;
-        }
-
-        // if we found a JPEG, we need to open the file for writing
-        if (containsJpegHeader)
-        {
-            sprintf(filename, "%03i.jpg", imageCount);
-            outptr = fopen(filename, "w");
-        }
-
-        // write anytime we have an open file
-        if (outptr != NULL)
-        {
-            fwrite(buffer, sizeof(BYTE), bytesRead, outptr);
+            fwrite(bf, 512, 1, img);
         }
     }
 
-    // close last jpeg file
-    fclose(outptr);
-
-    // close infile
-    fclose(inptr);
-
-    // success
+    //frees memory and closes files
+    fclose(img);
+    fclose(file);
+    free(bf);
     return 0;
 }
